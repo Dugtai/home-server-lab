@@ -1,0 +1,19 @@
+# Example systemd service for chatbot
+# Copy to /etc/systemd/system/chatbot.service and adjust paths/user.
+
+[Unit]
+Description=Home Server Chatbot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chatbot
+WorkingDirectory=/opt/chatbot
+EnvironmentFile=/opt/chatbot/.env
+ExecStart=/opt/chatbot/venv/bin/python /opt/chatbot/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
