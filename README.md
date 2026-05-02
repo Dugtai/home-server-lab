@@ -1,23 +1,30 @@
 # Home Server Lab
 
-Домашняя серверная инфраструктура на базе мини-ПК Firebat S1 с Intel N100, Proxmox VE, OpenWrt, AdGuard Home, выборочной маршрутизацией трафика, VPN и anti-DPI обработкой для YouTube/Discord.
+Домашняя серверная инфраструктура на базе мини-ПК Firebat S1 с Intel N100, Proxmox VE, OpenWrt, AdGuard Home, выборочной маршрутизацией трафика, VPN, anti-DPI обработкой для YouTube/Discord и дополнительными self-hosted сервисами.
 
-Проект оформляется как лабораторный стенд для портфолио: с документацией, схемами, примерами конфигураций и поэтапным описанием внедрения.
+Проект оформляется в двух форматах:
+
+1. **User Guide** — пошаговый гайд для повторения проекта с нуля.
+2. **Technical Documentation** — техническое описание архитектуры для портфолио.
+
+Коммерческие материалы, прайс-листы и клиентские шаблоны в репозиторий не добавляются.
 
 ## Цель проекта
 
-Создать управляемую домашнюю сеть с централизованной фильтрацией DNS, маршрутизацией трафика, изоляцией сервисов и возможностью дальнейшего расширения под self-hosted сервисы.
+Создать управляемую домашнюю сеть с централизованной DNS-фильтрацией, виртуальным маршрутизатором, выборочной маршрутизацией трафика, изоляцией сервисов и возможностью дальнейшего расширения.
 
 Основные задачи:
 
 - развернуть Proxmox VE на bare metal;
-- использовать OpenWrt как виртуальный основной шлюз;
-- вынести DNS-фильтрацию в отдельный LXC-контейнер с AdGuard Home;
-- настроить выборочную маршрутизацию трафика;
-- направлять YouTube и Discord через anti-DPI обработку без полного VPN;
-- направлять отдельные заблокированные сервисы через VPN;
+- использовать OpenWrt VM как основной домашний шлюз;
+- настроить WAN/LAN-сегментацию через Proxmox bridges;
+- вынести DNS-фильтрацию в отдельный LXC с AdGuard Home;
+- использовать selective routing вместо полного VPN для всей сети;
+- направлять YouTube и Discord через anti-DPI обработку без перегрузки VPN;
+- направлять отдельные сервисы через VPN;
 - оставить обычный трафик напрямую через провайдера;
-- подготовить основу для чатбота, Nextcloud, мониторинга и резервного копирования.
+- подготовить основу для чатбота, мониторинга, Nextcloud и резервного копирования;
+- документировать проект как воспроизводимый инфраструктурный стенд.
 
 ## Аппаратная платформа
 
@@ -28,13 +35,14 @@
 | RAM | 16 GB |
 | SSD | 512 GB |
 | Hypervisor | Proxmox VE |
+| Router VM | OpenWrt |
 | Access Point | Tenda i29 AX3000 Wi-Fi 6 |
 | Network | 2 × Ethernet |
 
 ## Целевая архитектура
 
 ```text
-Optical terminal / ISP router
+ISP / Optical terminal / Provider router
         ↓
 Bridge mode or temporary NAT mode
         ↓
@@ -71,10 +79,15 @@ Proxmox VE
 │   ├── systemd service
 │   └── environment file
 │
-└── VM/LXC 103: Nextcloud
-    ├── local cloud storage
-    ├── LAN/VPN-only access at first stage
-    └── external storage and backup later
+├── VM/LXC 103: Nextcloud
+│   ├── local cloud storage
+│   ├── LAN/VPN-only access at first stage
+│   └── external storage and backup later
+│
+└── LXC 104: Monitoring
+    ├── uptime checks
+    ├── service status checks
+    └── optional notifications
 ```
 
 ## Разделение трафика
@@ -89,6 +102,7 @@ Proxmox VE
 | Banks / government services | Direct WAN |
 | Games | Direct WAN |
 | IoT devices | Direct WAN or separate VLAN later |
+| Local services | LAN only |
 | Other regular traffic | Direct WAN |
 
 ## План адресации
@@ -118,6 +132,88 @@ cloud.home.arpa       -> 192.168.10.5
 ap.home.arpa          -> 192.168.10.10
 ```
 
+## Документация
+
+### User Guide
+
+Раздел для пошагового повторения проекта с нуля.
+
+```text
+docs/user-guide/
+├── 00-roadmap.md
+├── 01-what-to-buy.md
+├── 02-first-start.md
+├── 03-install-proxmox.md
+├── 04-proxmox-network.md
+├── 05-create-openwrt-vm.md
+├── 06-connect-access-point.md
+├── 07-install-adguard.md
+├── 08-vpn-routing.md
+├── 09-anti-dpi-routing.md
+└── 10-troubleshooting.md
+```
+
+Рекомендуемый порядок прохождения:
+
+```text
+01 -> 02 -> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09 -> 10
+```
+
+### Technical Documentation
+
+Раздел для технического описания архитектуры и инженерных решений.
+
+```text
+docs/technical/
+├── architecture.md
+├── network-design.md
+├── routing-policy.md
+├── security-notes.md
+├── backup-strategy.md
+├── service-isolation.md
+└── monitoring.md
+```
+
+## Репозиторий
+
+Текущая структура:
+
+```text
+home-server-lab/
+├── README.md
+├── CHANGELOG.md
+├── .gitignore
+├── docs/
+│   ├── 00-project-overview.md
+│   ├── user-guide/
+│   └── technical/
+├── proxmox/
+│   ├── README.md
+│   ├── vm-plan.md
+│   └── storage-plan.md
+├── openwrt/
+│   ├── README.md
+│   └── firewall-notes.md
+├── adguard/
+│   ├── README.md
+│   └── setup.md
+├── configs/
+│   ├── openwrt/
+│   │   └── pbr-rules.example.md
+│   └── wireguard/
+│       └── wg0.conf.example
+├── services/
+│   ├── README.md
+│   └── chatbot/
+│       ├── README.md
+│       ├── .env.example
+│       └── systemd-service.example
+├── diagrams/
+│   └── README.md
+└── screenshots/
+    └── README.md
+```
+
 ## Этапы реализации
 
 ### Stage 1 — Base infrastructure
@@ -138,19 +234,19 @@ ap.home.arpa          -> 192.168.10.10
 - Add local DNS rewrites.
 - Verify DNS logs and filtering.
 
-### Stage 3 — anti-DPI routing
+### Stage 3 — VPN and selective routing
+
+- Configure VPN client on OpenWrt.
+- Add PBR rules for selected services.
+- Route selected services through VPN.
+- Keep regular traffic routed directly via ISP.
+
+### Stage 4 — anti-DPI routing
 
 - Install OpenWrt-compatible anti-DPI tooling.
 - Apply anti-DPI processing for YouTube and Discord traffic.
 - Keep YouTube and Discord traffic outside VPN to reduce latency.
 - Test video streaming, Discord voice, images and screen sharing.
-
-### Stage 4 — VPN and selective routing
-
-- Configure VPN client on OpenWrt.
-- Add PBR rules for selected services.
-- Route ChatGPT, Instagram and selected Telegram traffic through VPN.
-- Keep regular traffic routed directly via ISP.
 
 ### Stage 5 — Additional services
 
@@ -158,26 +254,7 @@ ap.home.arpa          -> 192.168.10.10
 - Add systemd service for bot process.
 - Add monitoring.
 - Prepare backup strategy.
-- Deploy test Nextcloud instance after network stabilization.
-
-## Repository structure
-
-Planned structure:
-
-```text
-home-server-lab/
-├── README.md
-├── .gitignore
-├── docs/
-├── diagrams/
-├── proxmox/
-├── openwrt/
-├── adguard/
-├── services/
-│   ├── chatbot/
-│   └── nextcloud/
-└── screenshots/
-```
+- Deploy test Nextcloud instance after network stabilization and backup planning.
 
 ## Security notes
 
@@ -187,13 +264,15 @@ Do not publish:
 
 - VPN private keys;
 - bot tokens;
-- `.env` files;
+- real `.env` files;
 - real WireGuard/AmneziaWG configs;
 - PPPoE credentials;
 - public IP address if it should remain private;
 - MAC addresses;
 - Nextcloud database dumps;
-- Proxmox VM backups;
+- Proxmox VM/LXC backups;
+- OpenWrt full backups without cleanup;
+- AdGuardHome.yaml with sensitive data;
 - screenshots with sensitive data.
 
 Only sanitized examples should be committed:
@@ -206,19 +285,32 @@ pbr-rules.example.md
 AdGuardHome.example.yaml
 ```
 
+`.gitignore` reduces the risk of accidental commits, but it does not make secret handling automatic. Real secrets must remain outside the repository.
+
 ## Current status
 
-Project status: planning and initial repository setup.
+Project status: repository prepared, practical deployment pending.
 
 Completed:
 
 - repository created;
-- initial `.gitignore` added;
-- base README created.
+- `.gitignore` added;
+- main README updated;
+- User Guide structure added;
+- Technical Documentation structure added;
+- Proxmox planning documents added;
+- OpenWrt notes added;
+- AdGuard setup notes added;
+- VPN/PBR examples added;
+- chatbot templates added;
+- backup, monitoring and security notes added;
+- changelog added.
 
-Next steps:
+Next practical steps:
 
-- add documentation structure;
-- document Proxmox installation plan;
-- document network topology;
-- prepare OpenWrt VM setup notes.
+- prepare Proxmox VE installation media;
+- configure Firebat S1 BIOS;
+- install Proxmox VE;
+- identify physical network interfaces;
+- configure Proxmox bridges;
+- create OpenWrt VM.
